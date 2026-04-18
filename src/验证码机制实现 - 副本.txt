@@ -1,0 +1,502 @@
+# 验证码机制与布局实现
+
+## 1. 布局代码
+
+### HTML结构
+```html
+<!-- 防伪验证遮罩层 -->
+<div class="auth-overlay hidden" id="authOverlay">
+    <div class="auth-container">
+        <div class="auth-logo">
+            <svg viewBox="0 0 24 24" fill="white"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+        </div>
+        <h2 class="auth-title">伤寒论背诵神器</h2>
+        <p class="auth-subtitle">正版授权验证</p>
+
+        <div class="auth-mark-display">
+            <div class="auth-mark-label">此乃道友独特印记：</div>
+            <div class="auth-mark-value" id="deviceMark">正在生成印记...</div>
+            <button class="auth-mark-copy" id="copyMarkBtn">复制印记</button>
+        </div>
+
+        <div class="auth-input-group">
+            <input type="text" class="auth-input" id="authPassword" placeholder="请输入激活码" autocomplete="off">
+            <div class="auth-hint">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="#9E9E9E"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+                <span>激活码不区分大小写，同一设备只需验证一次</span>
+            </div>
+        </div>
+
+        <button class="auth-btn" id="authSubmitBtn" onclick="verifyPassword()">验证并进入</button>
+
+        <div class="auth-error-msg" id="authErrorMsg">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="#f44336"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+            <span>验证码错误，请重试</span>
+        </div>
+    </div>
+</div>
+```
+
+### CSS样式
+```css
+/* 防伪验证遮罩层 */
+.auth-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, #1a237e 0%, #0d47a1 50%, #01579b 100%);
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.auth-overlay.hidden {
+    display: none !important;
+}
+.auth-container {
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 20px;
+    padding: 40px;
+    max-width: 420px;
+    width: 90%;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+}
+.auth-container::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 5px;
+    background: linear-gradient(90deg, #4CAF50, #2196F3, #9C27B0, #FF9800);
+}
+.auth-logo {
+    width: 80px;
+    height: 80px;
+    background: linear-gradient(135deg, #4CAF50, #2E7D32);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 24px;
+}
+.auth-logo svg {
+    width: 40px;
+    height: 40px;
+    fill: white;
+}
+.auth-title {
+    font-size: 24px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    color: #333;
+}
+.auth-subtitle {
+    font-size: 14px;
+    color: #757575;
+    margin-bottom: 28px;
+}
+.auth-mark-display {
+    margin-bottom: 20px;
+}
+.auth-mark-label {
+    font-size: 14px;
+    color: #666;
+    margin-bottom: 8px;
+}
+.auth-mark-value {
+    background: #f5f5f5;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 10px;
+    font-family: monospace;
+    font-size: 14px;
+    color: #333;
+    word-break: break-all;
+}
+.auth-mark-copy {
+    background: #e3f2fd;
+    color: #1976d2;
+    border: 1px solid #bbdefb;
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+.auth-mark-copy:hover {
+    background: #bbdefb;
+}
+.auth-input-group {
+    margin-bottom: 20px;
+}
+.auth-input {
+    width: 100%;
+    padding: 16px 20px;
+    font-size: 18px;
+    letter-spacing: 8px;
+    text-align: center;
+    border: 2px solid #E0E0E0;
+    border-radius: 12px;
+    background: #F5F5F5;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-family: inherit;
+}
+.auth-input:focus {
+    outline: none;
+    border-color: #4CAF50;
+    background: #fff;
+}
+.auth-input.error {
+    border-color: #f44336;
+    background: #ffebee;
+    animation: shake 0.5s ease;
+}
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    20%, 60% { transform: translateX(-10px); }
+    40%, 80% { transform: translateX(10px); }
+}
+.auth-hint {
+    font-size: 12px;
+    color: #9E9E9E;
+    margin-top: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+}
+.auth-btn {
+    width: 100%;
+    padding: 16px;
+    background: linear-gradient(135deg, #4CAF50, #2E7D32);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+    transition: all 0.2s;
+}
+.auth-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
+}
+.auth-error-msg {
+    color: #f44336;
+    font-size: 13px;
+    margin-top: 12px;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+}
+.auth-error-msg.show {
+    display: flex;
+}
+
+/* 手机端适配 */
+@media (max-width: 768px) {
+    .auth-container {
+        padding: 28px 24px;
+    }
+    .auth-title {
+        font-size: 20px;
+    }
+    .auth-input {
+        padding: 14px 16px;
+        font-size: 16px;
+        letter-spacing: 6px;
+    }
+    .auth-logo {
+        width: 64px;
+        height: 64px;
+    }
+    .auth-logo svg {
+        width: 32px;
+        height: 32px;
+    }
+}
+```
+
+## 2. 验证机制逻辑
+
+### 设备唯一标识生成
+```javascript
+// 生成设备唯一标识
+function generateDeviceId() {
+    // 生成10位设备唯一标识码
+    const deviceId = Math.floor(Math.random() * 10000000000).toString().padStart(10, '0');
+    return deviceId;
+}
+
+// 从Cookie中获取值
+function getCookie(name) {
+    const cookieValue = document.cookie
+        .split('; ')
+        .find(row => row.startsWith(name + '='))
+        ?.split('=')[1];
+    return cookieValue;
+}
+
+// 设置Cookie
+function setCookie(name, value, days) {
+    const date = new Date();
+    date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+    const expires = "expires=" + date.toUTCString();
+    document.cookie = name + "=" + value + ";" + expires + ";path=/"; 
+}
+
+// 初始化设备唯一标识
+function initDeviceId() {
+    // 先从localStorage获取
+    let deviceId = localStorage.getItem('device_id');
+    
+    // 如果localStorage中没有，从Cookie获取
+    if (!deviceId) {
+        deviceId = getCookie('device_id');
+    }
+    
+    // 如果都没有，生成新的
+    if (!deviceId) {
+        deviceId = generateDeviceId();
+        // 同时存储到localStorage和Cookie
+        localStorage.setItem('device_id', deviceId);
+        // 设置Cookie，有效期10年
+        setCookie('device_id', deviceId, 3650);
+    }
+    
+    return deviceId;
+}
+
+// 存储设备唯一标识
+const deviceId = initDeviceId();
+```
+
+### 设备印记生成
+```javascript
+// 生成设备印记
+function generateDeviceMark() {
+    // 生成时间部分
+    const now = new Date();
+    const month = now.getMonth() + 1;
+    const day = now.getDate();
+    const hours = now.getHours();
+    const minutes = now.getMinutes();
+    // 确保使用24小时制，格式：月日时分（8位）
+    const timeStr = `${String(month).padStart(2, '0')}${String(day).padStart(2, '0')}${String(hours).padStart(2, '0')}${String(minutes).padStart(2, '0')}`;
+    
+    // 生成完整印记
+    const mark = `J1${timeStr}${deviceId}`;
+    return mark;
+}
+
+// 存储当前设备印记
+let currentDeviceMark = null;
+
+// 获取设备印记
+function getDeviceMark() {
+    // 检查是否已经验证成功
+    if (isDeviceVerified()) {
+        // 验证成功后，每次都重新生成
+        currentDeviceMark = generateDeviceMark();
+        return currentDeviceMark;
+    }
+    
+    // 未验证成功时，检查是否有存储的印记
+    let storedMark = localStorage.getItem('pending_device_mark');
+    if (storedMark) {
+        // 使用存储的印记
+        currentDeviceMark = storedMark;
+    } else {
+        // 首次生成，存储起来
+        currentDeviceMark = generateDeviceMark();
+        localStorage.setItem('pending_device_mark', currentDeviceMark);
+    }
+    return currentDeviceMark;
+}
+```
+
+### 验证码计算
+```javascript
+// 计算激活码
+function calculateActivationCode(mark) {
+    // 提取后4位
+    const last4 = mark.slice(-4);
+    // 16进制转10进制
+    const hexToDec = parseInt(last4, 16);
+    // 提取时间后4位（位置：从第3位开始取8位时间，然后取后4位）
+    const timePart = mark.slice(2, 10); // 提取时间部分（8位）
+    const timeLast4 = timePart.slice(4); // 取时间部分的后4位
+    const timeNum = parseInt(timeLast4);
+    // 计算激活码
+    const activationCode = hexToDec + timeNum + 1111;
+    return activationCode.toString();
+}
+```
+
+### 验证逻辑
+```javascript
+// 检查设备是否已验证
+function isDeviceVerified() {
+    // 检查新的验证标记
+    if (localStorage.getItem('tcm_auth_passed') === 'true') {
+        return true;
+    }
+    // 检查旧的验证标记，兼容之前的版本
+    if (localStorage.getItem('jingui_auth_passed') === 'true') {
+        // 迁移到新的标记
+        localStorage.setItem('tcm_auth_passed', 'true');
+        return true;
+    }
+    return false;
+}
+
+// 标记设备已验证
+function markDeviceVerified() {
+    // 写入新的验证标记，与伤寒论条文_副本.html文件保持一致
+    localStorage.setItem('tcm_auth_passed', 'true');
+    // 同时保留旧的标记，兼容之前的版本
+    localStorage.setItem('jingui_auth_passed', 'true');
+    // 清除存储的待验证设备印记
+    localStorage.removeItem('pending_device_mark');
+}
+
+// 验证密码
+function verifyPassword() {
+    const input = document.getElementById('authPassword');
+    const errorMsg = document.getElementById('authErrorMsg');
+    const entered = input.value.trim();
+    
+    // 使用当前显示的设备印记来计算激活码
+    const deviceMarkElement = document.getElementById('deviceMark');
+    const deviceMark = deviceMarkElement ? deviceMarkElement.textContent : getDeviceMark();
+    const correct = calculateActivationCode(deviceMark);
+
+    if (entered === correct) {
+        markDeviceVerified();
+        document.getElementById('authOverlay').classList.add('hidden');
+        initApp();
+    } else {
+        input.classList.add('error');
+        errorMsg.classList.add('show');
+        input.value = '';
+        setTimeout(() => {
+            input.classList.remove('error');
+        }, 500);
+        // 显示客服联系弹窗
+        setTimeout(() => {
+            showContactModal();
+        }, 500);
+    }
+}
+
+// 复制印记到剪贴板
+function copyMarkToClipboard() {
+    // 使用当前显示的设备印记
+    const deviceMarkElement = document.getElementById('deviceMark');
+    const deviceMark = deviceMarkElement ? deviceMarkElement.textContent : getDeviceMark();
+    navigator.clipboard.writeText(deviceMark).then(() => {
+        const copyBtn = document.getElementById('copyMarkBtn');
+        const originalText = copyBtn.textContent;
+        copyBtn.textContent = '已复制';
+        setTimeout(() => {
+            copyBtn.textContent = originalText;
+        }, 2000);
+    });
+}
+```
+
+### 初始化逻辑
+```javascript
+// 初始化
+document.addEventListener('DOMContentLoaded', function() {
+    // 初始化排序按钮状态
+    updateNotesSortButton();
+    updateBookmarksSortButton();
+    
+    // 生成并显示设备印记
+    function updateDeviceMark() {
+        const deviceMark = getDeviceMark();
+        const deviceMarkElement = document.getElementById('deviceMark');
+        if (deviceMarkElement) {
+            deviceMarkElement.textContent = deviceMark;
+        }
+    }
+    
+    // 初始更新，确保时间是当前时间
+    updateDeviceMark();
+    
+    // 为复制印记按钮添加事件
+    const copyMarkBtn = document.getElementById('copyMarkBtn');
+    if (copyMarkBtn) {
+        copyMarkBtn.addEventListener('click', copyMarkToClipboard);
+    }
+    
+    // 检查是否需要验证
+    if (isDeviceVerified()) {
+        initApp();
+    } else {
+        // 显示验证层
+        document.getElementById('authOverlay').classList.remove('hidden');
+        document.getElementById('authPassword').focus();
+        document.getElementById('authPassword').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') verifyPassword();
+        });
+    }
+    
+    // 根据当前激活的tab显示/隐藏导航栏按钮
+    const activeTab = document.querySelector('.bottom-nav-item.active');
+    const navToggle = document.querySelector('.nav-toggle');
+    if (navToggle && activeTab) {
+        if (activeTab.dataset.tab === 'chapters') {
+            navToggle.style.display = 'flex';
+        } else {
+            navToggle.style.display = 'none';
+        }
+    }
+    
+    // 监听窗口大小变化
+    window.addEventListener('resize', hideNavOnMobile);
+});
+```
+
+## 3. 实现逻辑说明
+
+### 1. 设备唯一标识生成与存储
+- 首次打开程序时，生成10位数字的设备唯一标识
+- 同时存储到localStorage和Cookie中，确保即使清空缓存或删除app，设备唯一标识也能保持不变
+- 设备唯一标识在首次生成后固定不变
+
+### 2. 设备印记生成
+- 设备印记格式：J1 + 时间（8位） + 设备唯一标识（10位）
+- 时间格式：月日时分（24小时制）
+- 首次生成设备印记时，将其存储到localStorage的'pending_device_mark'键中
+- 在验证成功前，每次打开程序都会使用存储的设备印记，确保时间部分不变
+- 验证成功后，清除存储的待验证设备印记
+
+### 3. 验证码计算
+- 提取设备印记的后4位，转换为10进制
+- 提取时间部分的后4位
+- 计算验证码：16进制转10进制值 + 时间后4位值 + 1111
+
+### 4. 验证流程
+- 首次打开程序时，生成设备印记并显示
+- 用户输入计算出的验证码
+- 验证通过后，标记设备为已验证，后续打开不再需要验证
+- 验证失败时，显示错误提示并弹出客服联系弹窗
+
+### 5. 安全与用户体验
+- 设备唯一标识的双重存储（localStorage + Cookie）确保持久性
+- 验证成功前印记保持不变，确保用户有足够时间计算和输入验证码
+- 提供复制印记按钮，方便用户复制印记用于计算验证码
+- 响应式设计，适配不同设备屏幕
