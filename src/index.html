@@ -1,11 +1,502 @@
 <!DOCTYPE html>
-<html lang="en">
-    <head>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>PakePlus</title>
-    </head>
-    <body>
-        Hello World
-    </body>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>中基导图</title>
+    <meta name="description" content="中基导图 - 中医基础理论学习工具">
+    <meta name="theme-color" content="#1a237e">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" href="2.png" type="image/png">
+    <link rel="apple-touch-icon" href="2.png">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+        .container {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            overflow: hidden;
+        }
+        iframe {
+            width: 100%;
+            height: calc(100% + 60px);
+            border: none;
+            position: absolute;
+            top: -60px;
+            left: 0;
+        }
+
+        .auth-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #1a237e 0%, #0d47a1 50%, #01579b 100%);
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .auth-overlay.hidden {
+            display: none !important;
+        }
+        .auth-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 420px;
+            width: 90%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        .auth-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 5px;
+            background: linear-gradient(90deg, #4CAF50, #2196F3, #9C27B0, #FF9800);
+        }
+        .auth-logo {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 24px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+        .auth-logo img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .auth-title {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: #333;
+        }
+        .auth-subtitle {
+            font-size: 14px;
+            color: #757575;
+            margin-bottom: 28px;
+        }
+        .auth-mark-display {
+            margin-bottom: 20px;
+        }
+        .auth-mark-label {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 8px;
+        }
+        .auth-mark-value {
+            background: #f5f5f5;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 10px;
+            font-family: monospace;
+            font-size: 14px;
+            color: #333;
+            word-break: break-all;
+        }
+        .auth-mark-copy {
+            background: #e3f2fd;
+            color: #1976d2;
+            border: 1px solid #bbdefb;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .auth-mark-copy:hover {
+            background: #bbdefb;
+        }
+        .auth-input-group {
+            margin-bottom: 20px;
+        }
+        .auth-input {
+            width: 100%;
+            padding: 16px 20px;
+            font-size: 18px;
+            letter-spacing: 8px;
+            text-align: center;
+            border: 2px solid #E0E0E0;
+            border-radius: 12px;
+            background: #F5F5F5;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-family: inherit;
+        }
+        .auth-input:focus {
+            outline: none;
+            border-color: #4CAF50;
+            background: #fff;
+        }
+        .auth-input.error {
+            border-color: #f44336;
+            background: #ffebee;
+            animation: shake 0.5s ease;
+        }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-10px); }
+            40%, 80% { transform: translateX(10px); }
+        }
+        .auth-hint {
+            font-size: 12px;
+            color: #9E9E9E;
+            margin-top: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+        }
+        .auth-btn {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, #4CAF50, #2E7D32);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: inherit;
+            box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+            transition: all 0.2s;
+        }
+        .auth-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
+        }
+        .auth-error-msg {
+            color: #f44336;
+            font-size: 13px;
+            margin-top: 12px;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+        }
+        .auth-error-msg.show {
+            display: flex;
+        }
+
+        @media (max-width: 768px) {
+            .auth-container {
+                padding: 28px 24px;
+            }
+            .auth-title {
+                font-size: 20px;
+            }
+            .auth-input {
+                padding: 14px 16px;
+                font-size: 16px;
+                letter-spacing: 6px;
+            }
+            .auth-logo {
+                width: 64px;
+                height: 64px;
+            }
+        }
+
+        .contact-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 10001;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+        .contact-modal.show {
+            display: flex;
+        }
+        .contact-modal-content {
+            background: white;
+            border-radius: 16px;
+            padding: 32px;
+            max-width: 360px;
+            width: 90%;
+            text-align: center;
+        }
+        .contact-modal-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 16px;
+        }
+        .contact-modal-text {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+        .contact-modal-btn {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 12px 32px;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <iframe src="https://www.kdocs.cn/l/cdI4wTXKPyKc" id="mainIframe"></iframe>
+    </div>
+
+    <div class="auth-overlay hidden" id="authOverlay">
+        <div class="auth-container">
+            <div class="auth-logo">
+                <img src="2.png" alt="中基导图">
+            </div>
+            <h2 class="auth-title">中基导图</h2>
+            <p class="auth-subtitle">正版授权验证</p>
+
+            <div class="auth-mark-display">
+                <div class="auth-mark-label">此乃道友独特印记：</div>
+                <div class="auth-mark-value" id="deviceMark">正在生成印记...</div>
+                <button class="auth-mark-copy" id="copyMarkBtn">复制印记</button>
+            </div>
+
+            <div class="auth-input-group">
+                <input type="text" class="auth-input" id="authPassword" placeholder="请输入激活码" autocomplete="off">
+                <div class="auth-hint">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="#9E9E9E"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+                    <span>激活码不区分大小写，同一设备只需验证一次</span>
+                </div>
+            </div>
+
+            <button class="auth-btn" id="authSubmitBtn" onclick="verifyPassword()">验证并进入</button>
+
+            <div class="auth-error-msg" id="authErrorMsg">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="#f44336"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+                <span>验证码错误，请重试</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="contact-modal" id="contactModal">
+        <div class="contact-modal-content">
+            <div class="contact-modal-title">验证失败</div>
+            <div class="contact-modal-text">
+                请联系客服获取帮助：<br>
+                微信公众号：一介医生<br>
+                微信：yijiedoctor
+            </div>
+            <button class="contact-modal-btn" onclick="closeContactModal()">确定</button>
+        </div>
+    </div>
+
+    <script>
+        function generateDeviceId() {
+            const deviceId = Math.floor(Math.random() * 10000000000).toString().padStart(10, '0');
+            return deviceId;
+        }
+
+        function getCookie(name) {
+            const cookieValue = document.cookie
+                .split('; ')
+                .find(row => row.startsWith(name + '='))
+                ?.split('=')[1];
+            return cookieValue;
+        }
+
+        function setCookie(name, value, days) {
+            const date = new Date();
+            date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+            const expires = "expires=" + date.toUTCString();
+            document.cookie = name + "=" + value + ";" + expires + ";path=/";
+        }
+
+        function initDeviceId() {
+            let deviceId = localStorage.getItem('device_id');
+
+            if (!deviceId) {
+                deviceId = getCookie('device_id');
+            }
+
+            if (!deviceId) {
+                deviceId = generateDeviceId();
+                localStorage.setItem('device_id', deviceId);
+                setCookie('device_id', deviceId, 3650);
+            }
+
+            return deviceId;
+        }
+
+        const deviceId = initDeviceId();
+
+        function generateDeviceMark() {
+            const now = new Date();
+            const month = now.getMonth() + 1;
+            const day = now.getDate();
+            const hours = now.getHours();
+            const minutes = now.getMinutes();
+            const timeStr = `${String(month).padStart(2, '0')}${String(day).padStart(2, '0')}${String(hours).padStart(2, '0')}${String(minutes).padStart(2, '0')}`;
+
+            const mark = `J1${timeStr}${deviceId}`;
+            return mark;
+        }
+
+        let currentDeviceMark = null;
+
+        function getDeviceMark() {
+            if (isDeviceVerified()) {
+                currentDeviceMark = generateDeviceMark();
+                return currentDeviceMark;
+            }
+
+            let storedMark = localStorage.getItem('pending_device_mark');
+            if (storedMark) {
+                currentDeviceMark = storedMark;
+            } else {
+                currentDeviceMark = generateDeviceMark();
+                localStorage.setItem('pending_device_mark', currentDeviceMark);
+            }
+            return currentDeviceMark;
+        }
+
+        function calculateActivationCode(mark) {
+            const last4 = mark.slice(-4);
+            const hexToDec = parseInt(last4, 16);
+            const timePart = mark.slice(2, 10);
+            const timeLast4 = timePart.slice(4);
+            const timeNum = parseInt(timeLast4);
+            const activationCode = hexToDec + timeNum + 1111;
+            return activationCode.toString();
+        }
+
+        function isDeviceVerified() {
+            if (localStorage.getItem('tcm_auth_passed') === 'true') {
+                return true;
+            }
+            if (localStorage.getItem('jingui_auth_passed') === 'true') {
+                localStorage.setItem('tcm_auth_passed', 'true');
+                return true;
+            }
+            return false;
+        }
+
+        function markDeviceVerified() {
+            localStorage.setItem('tcm_auth_passed', 'true');
+            localStorage.setItem('jingui_auth_passed', 'true');
+            localStorage.removeItem('pending_device_mark');
+        }
+
+        function showContactModal() {
+            document.getElementById('contactModal').classList.add('show');
+        }
+
+        function closeContactModal() {
+            document.getElementById('contactModal').classList.remove('show');
+        }
+
+        function verifyPassword() {
+            const input = document.getElementById('authPassword');
+            const errorMsg = document.getElementById('authErrorMsg');
+            const entered = input.value.trim();
+
+            const deviceMarkElement = document.getElementById('deviceMark');
+            const deviceMark = deviceMarkElement ? deviceMarkElement.textContent : getDeviceMark();
+            const correct = calculateActivationCode(deviceMark);
+
+            if (entered === correct) {
+                markDeviceVerified();
+                document.getElementById('authOverlay').classList.add('hidden');
+                initApp();
+            } else {
+                input.classList.add('error');
+                errorMsg.classList.add('show');
+                input.value = '';
+                setTimeout(() => {
+                    input.classList.remove('error');
+                }, 500);
+                setTimeout(() => {
+                    showContactModal();
+                }, 500);
+            }
+        }
+
+        function copyMarkToClipboard() {
+            const deviceMarkElement = document.getElementById('deviceMark');
+            const deviceMark = deviceMarkElement ? deviceMarkElement.textContent : getDeviceMark();
+            navigator.clipboard.writeText(deviceMark).then(() => {
+                const copyBtn = document.getElementById('copyMarkBtn');
+                const originalText = copyBtn.textContent;
+                copyBtn.textContent = '已复制';
+                setTimeout(() => {
+                    copyBtn.textContent = originalText;
+                }, 2000);
+            });
+        }
+
+        function initApp() {
+            console.log('App initialized - main content would load here');
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            function updateDeviceMark() {
+                const deviceMark = getDeviceMark();
+                const deviceMarkElement = document.getElementById('deviceMark');
+                if (deviceMarkElement) {
+                    deviceMarkElement.textContent = deviceMark;
+                }
+            }
+
+            updateDeviceMark();
+
+            const copyMarkBtn = document.getElementById('copyMarkBtn');
+            if (copyMarkBtn) {
+                copyMarkBtn.addEventListener('click', copyMarkToClipboard);
+            }
+
+            if (isDeviceVerified()) {
+                initApp();
+            } else {
+                document.getElementById('authOverlay').classList.remove('hidden');
+                document.getElementById('authPassword').focus();
+                document.getElementById('authPassword').addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') verifyPassword();
+                });
+            }
+        });
+
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('service-worker.js')
+                    .then(function(registration) {
+                        console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                    })
+                    .catch(function(error) {
+                        console.log('ServiceWorker registration failed: ', error);
+                    });
+            });
+        }
+    </script>
+</body>
 </html>
